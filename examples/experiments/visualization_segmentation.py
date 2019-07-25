@@ -1,8 +1,43 @@
-import numpy as np
+from __future__ import print_function
 import random
+from eolearn.core import EOPatch, FeatureType
+
+import numpy as np
 import matplotlib.pyplot as plt
 
-from eolearn.core import EOPatch, FeatureType
+
+class IndexTracker(object):
+    def __init__(self, ax, X, title, timestamps=None, cmap='gray', fig=None):
+        self.timestamps = timestamps
+        self.fig = fig
+        self.ax = ax
+        ax.set_title(title)
+        # ax.set_title('use scroll wheel to navigate images')
+
+        self.X = X
+        self.slices, rows, cols = X.shape
+        # self.ind = self.slices//2
+        self.ind = 0
+
+        self.im = ax.imshow(self.X[self.ind, :, :], cmap=cmap)
+        self.update()
+
+
+    def onscroll(self, event):
+        #print("%s %s" % (event.button, event.step))
+        if event.button == 'up':
+            self.ind = (self.ind + 1) % self.slices
+        else:
+            self.ind = (self.ind - 1) % self.slices
+        self.update()
+
+    def update(self):
+        self.im.set_data(self.X[self.ind, :, :])
+        # self.ax.set_title('%s' % self.ind)
+        # self.ax.set_title(timestamps[self.ind])
+        if self.fig != None:
+            self.fig.suptitle(timestamps[self.ind])
+        self.im.axes.figure.canvas.draw()
 
 
 def color_patches(image):
@@ -43,19 +78,75 @@ if __name__ == "__main__":
         plt.imshow(img_base)
         plt.subplot(1, 2, 2)
         plt.imshow(img_edge)
-    '''
-
+    
+    time = 4
     plt.figure('Colors', figsize=(17, 10))
     plt.subplot(1, 2, 1)
-    plt.imshow(np.clip(eopatch.data['BANDS'][0][..., [2, 1, 0]] * 3.5, 0, 1))
+    plt.imshow(np.clip(eopatch.data['BANDS'][time][..., [2, 1, 0]] * 3.5, 0, 1))
     plt.subplot(1, 2, 2)
-    #plt.imshow(color_patches(eopatch.data['SEGMENTS'][10].squeeze()))
-    plt.imshow(eopatch.data['SEGMENTS'][10].squeeze(),cmap="nipy_spectral")
+    #plt.imshow(color_patches(eopatch.data['SEGMENTS'][time].squeeze()))
+    plt.imshow(eopatch.data['SEGMENTS'][time].squeeze(),cmap="nipy_spectral")
 
     plt.figure('Mask', figsize=(17, 10))
     plt.subplot(1, 2, 1)
-    plt.imshow(eopatch.mask['SUM_EDGES'][10].squeeze())
+    plt.imshow(eopatch.mask['SUM_EDGES'][time].squeeze(), cmap="gray")
     plt.subplot(1, 2, 2)
-    plt.imshow(eopatch.mask['LOW_NDVI'][10].squeeze())
+    plt.imshow(eopatch.mask['LOW_NDVI'][time].squeeze(), cmap="gray")
+
+    plt.show()
+    '''
+
+    bands = np.clip(eopatch.data['BANDS'][..., [2, 1, 0]] * 3.5, 0, 1)
+    timestamps = eopatch.timestamp
+
+    # print(bands.shape)
+    width, height = 4, 2
+    tracker = []
+    fig, ax = plt.subplots(height, width)
+    i = 0
+
+    data = [[FeatureType.DATA, 'SEGMENTS', 'nipy_spectral'],
+            [FeatureType.MASK, 'UNLABELED_SEGMENTS', 'gray'],
+            [FeatureType.DATA, 'NDVI', 'YlGn'],
+            [FeatureType.MASK, 'NDVI_EDGE', 'gray'],
+            [FeatureType.DATA, 'B0', 'gray'],
+            [FeatureType.MASK, 'B0_EDGE', 'gray'],
+            [FeatureType.MASK, 'LOW_NDVI', 'gray'],
+            [FeatureType.MASK, 'SUM_EDGES', 'gray']
+            ]
+
+
+    i = 0
+    for w in range(width):
+        for h in range(height):
+            x = eopatch[data[i][0]][data[i][1]].squeeze()
+            t = IndexTracker(ax[h][w], x, data[i][1], eopatch.timestamp, data[i][2], fig)
+            tracker.append(t)
+            fig.canvas.mpl_connect('scroll_event', t.onscroll)
+            i = i + 1
+
+    '''
+    # plt.subplot(width, height, i)
+    X = eopatch.data['SEGMENTS'].squeeze()
+    tracker.append(IndexTracker(ax[i], X, "Segments", cmap="nipy_spectral", timestamps=timestamps, fig=fig))
+
+    # plt.subplot(width, height, i)
+    i = i + 1
+    X = eopatch.data['NDVI'].squeeze()
+    tracker.append(IndexTracker(ax[i], X, 'NDVI', cmap="YlGn"))
+
+    # plt.subplot(width, height, i)
+    i = i + 1
+    name = "SUM_EDGES"
+    X = eopatch.data[name].squeeze()
+    tracker.append(IndexTracker(ax[i], X, name))
+
+    # plt.subplot(width, height, i)
+    i = i + 1
+    name = "LOW_NDVI"
+    X = eopatch.data[name].squeeze()
+    tracker.append(IndexTracker(ax[i], X, name))
+    '''
+
 
     plt.show()
