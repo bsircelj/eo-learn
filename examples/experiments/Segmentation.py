@@ -35,7 +35,7 @@ class Segmentation(EOTask):
     def debug(self, object):
         print(type(object), object)
 
-    def extract_edges(self, eopatch, feature_type, feature_name, feature_weight, low_threshold, high_threshold, blur):
+    def extract_edges(self, eopatch, feature_type, feature_name, low_threshold, high_threshold, blur):
 
         image = eopatch[feature_type][feature_name]
         t, w, h, _ = image.shape
@@ -44,6 +44,8 @@ class Segmentation(EOTask):
             image_one = image[time]
             edge = self.one_edge(image_one, low_threshold, high_threshold, blur)
             all_edges[time] = edge
+        # plt.imshow(all_edges[4])
+        # plt.show()
         eopatch.add_feature(FeatureType.MASK, feature_name + '_EDGE', all_edges[..., np.newaxis])
         return all_edges
 
@@ -73,9 +75,9 @@ class Segmentation(EOTask):
 
         mask = mask > 0
         mask.shape
-        plt.figure()
-        plt.imshow(mask[10].squeeze(), cmap="gray")
-        plt.show()
+        # plt.figure()
+        # plt.imshow(mask[10].squeeze(), cmap="gray")
+        # plt.show()
         eopatch.add_feature(FeatureType.MASK, 'LOW_' + feature[1], mask[..., np.newaxis])
         return mask
 
@@ -88,8 +90,8 @@ class Segmentation(EOTask):
         # plt.imshow(color_patches(connected[1]))
         # eopatch.add_feature()
         connected, no_feat = label(img, self.structuring_element)
-        print(no_feat)
-
+        # print(no_feat)
+        '''
         plt.figure("Whole Image")
         time = 8
         plt.imshow(image[time])
@@ -101,9 +103,9 @@ class Segmentation(EOTask):
         plt.figure("Components")
         print(connected[time][1:20, 1:20])
         plt.imshow(connected[time][1:20, 1:20], cmap="nipy_spectral")
-        
+    
         plt.show()
-
+        '''
         return connected
 
     def execute(self, eopatch):
@@ -117,7 +119,7 @@ class Segmentation(EOTask):
         edge_vector = np.zeros((t, w, h))
         # plt.figure("Edges")
         for arg in self.edge_features:
-            one_edge = self.extract_edges(eopatch, arg['FeatureType'], arg['FeatureName'], arg['YearlyThreshold'],
+            one_edge = self.extract_edges(eopatch, arg['FeatureType'], arg['FeatureName'],
                                           arg['CannyThresholds'][0], arg['CannyThresholds'][1], arg['BlurArguments'])
             # plt.imshow(one_edge[10])
             # plt.show()
@@ -129,61 +131,112 @@ class Segmentation(EOTask):
 
         for unwanted, threshold in self.excluded_features:
             mask = self.filter_unwanted_areas(eopatch, unwanted, threshold)
-            edge_vector = np.logical_and(edge_vector, mask)
+            # plt.figure("unwanted mask")
+            # plt.imshow(mask[10])
 
-        components = self.connected_components(1 - edge_vector)
+            # plt.figure("edges original")
+            # plt.imshow(edge_vector[10])
+            edge_vector = np.logical_or(edge_vector, mask)
+
+            # plt.figure("result")
+            # plt.imshow(edge_vector[10])
+            # plt.show()
+
+        edge_vector = 1 - edge_vector
+        eopatch.add_feature(FeatureType.MASK, 'UNLABELED_SEGMENTS', edge_vector[..., np.newaxis])
+        components = self.connected_components(edge_vector)
 
         eopatch.add_feature(self.output_feature[0], self.output_feature[1], components[..., np.newaxis])
         # print(eopatch)
         return eopatch
 
 
+b_low = 10
+b_high = 40
+st1 = [[[0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0]
+        ],
+       [[1, 1, 1],
+        [1, 1, 1],
+        [1, 1, 1]
+        ],
+       [[0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0]]
+       ]
+
+st2 = [[[0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0]
+        ],
+       [[0, 1, 0],
+        [1, 1, 1],
+        [0, 1, 0]
+        ],
+       [[0, 0, 0],
+        [0, 1, 0],
+        [0, 0, 0]]
+       ]
+
 segmentation = Segmentation(
     edge_features=[
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'B0',
-         "CannyThresholds": (20, 50),
-         "YearlyThreshold": 0.4,
+         "CannyThresholds": (b_low, b_high),
          "BlurArguments": ((5, 5), 2)
          },
 
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'B1',
-         "CannyThresholds": (40, 60),
-         "YearlyThreshold": 0.4,
+         "CannyThresholds": (b_low, b_high),
          "BlurArguments": ((5, 5), 2)
          },
 
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'B2',
-         "CannyThresholds": (30, 70),
-         "YearlyThreshold": 0.4,
+         "CannyThresholds": (b_low, b_high),
          "BlurArguments": ((5, 5), 2)
          },
 
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'NDVI',
-         "CannyThresholds": (60, 120),
-         "YearlyThreshold": 0.2,
+         "CannyThresholds": (40, 100),
          "BlurArguments": ((5, 5), 2)
+         },
+        {"FeatureType": FeatureType.DATA,
+         "FeatureName": 'GRAY',
+         "CannyThresholds": (5, 40),
+         "BlurArguments": ((3, 3), 2)
          }
     ],
-    structuring_element=[[[0, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 0]
-                          ],
-                         [[1, 1, 1],
-                          [1, 1, 1],
-                          [1, 1, 1]
-                          ],
-                         [[0, 0, 0],
-                          [0, 1, 0],
-                          [0, 0, 0]]
-                         ],
+    structuring_element=st2,
     excluded_features=[((FeatureType.DATA, 'NDVI'), 0.3)],
-    dilation_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (7, 7)),
-    erosion_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
+    dilation_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
+    erosion_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
     output_feature=(FeatureType.DATA, 'SEGMENTS'))
+
+
+def rgb2gray(rgb):
+    return np.dot(rgb[..., :3], [0.2989, 0.5870, 0.1140])
+
+
+class Preprocess(EOTask):
+
+    def execute(self, eopatch):
+        img = np.clip(eopatch.data['BANDS'][..., [2, 1, 0]] * 3.5, 0, 1)
+        t, w, h, _ = img.shape
+        gray_img = np.zeros((t, w, h))
+        print(img[0].shape)
+        for time in range(t):
+            img0 = np.clip(eopatch[FeatureType.DATA]['BANDS'][time][..., [2, 1, 0]] * 3.5, 0, 1)
+            img = rgb2gray(img0)
+            gray_img[time] = (img * 255).astype(np.uint8)
+
+        eopatch.add_feature(FeatureType.DATA, 'GRAY', gray_img[..., np.newaxis])
+        print(eopatch)
+        return eopatch
+
 
 patch_location = './eopatch/'
 load = LoadFromDisk(patch_location)
@@ -202,6 +255,7 @@ extra_param = {
 workflow = LinearWorkflow(
     load,
     segmentation,
+    # Preprocess(),
     save
 )
 
