@@ -28,46 +28,34 @@ if __name__ == "__main__":
     argument_data = [
         (FeatureType.DATA, 'B0'),
         (FeatureType.DATA, 'B1'),
-        (FeatureType.DATA, 'B2')]
-    argument_timeless = [
-        (FeatureType.DATA_TIMELESS, 'ARGMAX_B4'),
-        (FeatureType.DATA_TIMELESS, 'ARGMAX_NDVI'),
-        (FeatureType.DATA_TIMELESS, 'ARGMAX_NDVI_SLOPE'),
-        (FeatureType.DATA_TIMELESS, 'ARGMIN_NDVI_SLOPE')]
+        (FeatureType.DATA, 'B2'),
+        (FeatureType.DATA, 'NDVI')]
 
+    '''
     i = 1
     for feature in argument_data:
         plt.figure(feature[1], figsize=(17, 10))
         # plt.title()
         i = i + 1
-        img_base = eopatch[feature[0]][feature[1]][0].squeeze()
-        img_edge = eopatch[FeatureType.MASK_TIMELESS][feature[1] + '_EDGE'].squeeze()
+        img_base = eopatch[feature[0]][feature[1]][10].squeeze()
+        img_edge = eopatch[FeatureType.MASK][feature[1] + '_EDGE'][10].squeeze()
         plt.subplot(1, 2, 1)
         plt.imshow(img_base)
         plt.subplot(1, 2, 2)
         plt.imshow(img_edge)
-
-    for feature in argument_timeless:
-        plt.figure(feature[1], figsize=(17, 10))
-        # plt.title()
-        i = i + 1
-        img_base = eopatch[feature[0]][feature[1]].squeeze()
-        img_edge = eopatch[FeatureType.MASK_TIMELESS][feature[1] + '_EDGE'].squeeze()
-        plt.subplot(1, 2, 1)
-        plt.imshow(img_base)
-        plt.subplot(1, 2, 2)
-        plt.imshow(img_edge)
+    '''
 
     plt.figure('Colors', figsize=(17, 10))
     plt.subplot(1, 2, 1)
     plt.imshow(np.clip(eopatch.data['BANDS'][0][..., [2, 1, 0]] * 3.5, 0, 1))
     plt.subplot(1, 2, 2)
-    plt.imshow(1-eopatch.mask_timeless['SEGMENTS'].squeeze())
+    #plt.imshow(color_patches(eopatch.data['SEGMENTS'][10].squeeze()))
+    plt.imshow(eopatch.data['SEGMENTS'][10].squeeze(),cmap="nipy_spectral")
 
     plt.figure('Mask', figsize=(17, 10))
     plt.subplot(1, 2, 1)
-    plt.imshow(eopatch.mask_timeless['SUM_EDGES'].squeeze())
+    plt.imshow(eopatch.mask['SUM_EDGES'][10].squeeze())
     plt.subplot(1, 2, 2)
-    plt.imshow(eopatch.mask_timeless['LOW_NDVI'].squeeze())
+    plt.imshow(eopatch.mask['LOW_NDVI'][10].squeeze())
 
     plt.show()
