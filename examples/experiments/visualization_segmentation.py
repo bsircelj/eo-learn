@@ -84,35 +84,6 @@ if __name__ == "__main__":
         (FeatureType.DATA, 'B2'),
         (FeatureType.DATA, 'NDVI')]
 
-    '''
-    i = 1
-    for feature in argument_data:
-        plt.figure(feature[1], figsize=(17, 10))
-        # plt.title()
-        i = i + 1
-        img_base = eopatch[feature[0]][feature[1]][10].squeeze()
-        img_edge = eopatch[FeatureType.MASK][feature[1] + '_EDGE'][10].squeeze()
-        plt.subplot(1, 2, 1)
-        plt.imshow(img_base)
-        plt.subplot(1, 2, 2)
-        plt.imshow(img_edge)
-    
-    time = 4
-    plt.figure('Colors', figsize=(17, 10))
-    plt.subplot(1, 2, 1)
-    plt.imshow(np.clip(eopatch.data['BANDS'][time][..., [2, 1, 0]] * 3.5, 0, 1))
-    plt.subplot(1, 2, 2)
-    #plt.imshow(color_patches(eopatch.data['SEGMENTS'][time].squeeze()))
-    plt.imshow(eopatch.data['SEGMENTS'][time].squeeze(),cmap="nipy_spectral")
-
-    plt.figure('Mask', figsize=(17, 10))
-    plt.subplot(1, 2, 1)
-    plt.imshow(eopatch.mask['SUM_EDGES'][time].squeeze(), cmap="gray")
-    plt.subplot(1, 2, 2)
-    plt.imshow(eopatch.mask['LOW_NDVI'][time].squeeze(), cmap="gray")
-
-    plt.show()
-    '''
 
     bands = np.clip(eopatch.data['BANDS'][..., [2, 1, 0]] * 3.5, 0, 1)
     timestamps = eopatch.timestamp
@@ -126,12 +97,16 @@ if __name__ == "__main__":
 
     data = [[FeatureType.DATA, 'SEGMENTS', None],
             [FeatureType.MASK, 'UNLABELED_SEGMENTS', 'gray'],
+            #[FeatureType.MASK, 'LOW_NDVI', 'gray'],
+            #[FeatureType.MASK, 'SUM_EDGES', 'gray'],
             [FeatureType.DATA, 'NDVI', 'YlGn'],
             [FeatureType.MASK, 'NDVI_EDGE', 'gray'],
-            [FeatureType.MASK, 'LOW_NDVI', 'gray'],
-            [FeatureType.MASK, 'SUM_EDGES', 'gray'],
-            [FeatureType.DATA, 'GRAY', 'gray'],
-            [FeatureType.MASK, 'GRAY_EDGE', 'gray']
+            [FeatureType.DATA, 'EVI', 'RdPu'],
+            [FeatureType.MASK, 'EVI_EDGE', 'gray'],
+            [FeatureType.DATA, 'ARVI', 'Blues'],
+            [FeatureType.MASK, 'ARVI_EDGE', 'gray'],
+            #[FeatureType.DATA, 'GRAY', 'gray'],
+            #[FeatureType.MASK, 'GRAY_EDGE', 'gray']
             ]
 
     i = 0
@@ -145,28 +120,6 @@ if __name__ == "__main__":
             fig.canvas.mpl_connect('scroll_event', t.onscroll)
             i = i + 1
 
-    '''
-    # plt.subplot(width, height, i)
-    X = eopatch.data['SEGMENTS'].squeeze()
-    tracker.append(IndexTracker(ax[i], X, "Segments", cmap="nipy_spectral", timestamps=timestamps, fig=fig))
 
-    # plt.subplot(width, height, i)
-    i = i + 1
-    X = eopatch.data['NDVI'].squeeze()
-    tracker.append(IndexTracker(ax[i], X, 'NDVI', cmap="YlGn"))
-
-    # plt.subplot(width, height, i)
-    i = i + 1
-    name = "SUM_EDGES"
-    X = eopatch.data[name].squeeze()
-    tracker.append(IndexTracker(ax[i], X, name))
-
-    # plt.subplot(width, height, i)
-    i = i + 1
-    name = "LOW_NDVI"
-    X = eopatch.data[name].squeeze()
-    tracker.append(IndexTracker(ax[i], X, name))
-    '''
-
-    fig.subplots_adjust(left=0.05, right=0.95, wspace=0.15, hspace=0.1)
+    fig.subplots_adjust(left=0.05, right=0.95, wspace=0.15, hspace=0.13)
     plt.show()
