@@ -1,6 +1,9 @@
+from functools import reduce
+
 import numpy as np
 import matplotlib.pyplot as plt
 from eolearn.core import EOTask, LinearWorkflow, FeatureType, OverwritePermission, LoadFromDisk, SaveToDisk
+from eolearn.ml_tools.utilities import rolling_window
 
 import cv2
 from scipy.ndimage.measurements import label
@@ -20,7 +23,8 @@ class Segmentation(EOTask):
                  excluded_features,
                  dilation_mask,
                  erosion_mask,
-                 output_feature):
+                 output_feature,
+                 window_sizes):
 
         self.edge_features = edge_features
         self.structuring_element = structuring_element
@@ -28,6 +32,7 @@ class Segmentation(EOTask):
         self.dilation_mask = dilation_mask
         self.erosion_mask = erosion_mask
         self.output_feature = output_feature
+        self.window_sizes = window_sizes
 
     def debug(self, object):
         print(type(object), object)
@@ -85,33 +90,70 @@ class Segmentation(EOTask):
 
         return connected
 
+    # computes logical AND between all adjacent cells with set offset along temporal dimension
+    def join_temporal_neighbours(self, array, offset):
+        t, w, h = array.shape
+        new_array = np.zeros((t, w, h))
+        for i in range(t):
+            low = i - offset if i - offset > 0 else 0
+            high = i + offset + 1 if i + offset + 1 <= t else t
+            for wi in range(w):  # Width index
+                for hi in range(h):  # Height index
+                    # print(low, high, low:high , wi, hi, array.shape)
+                    # print(array[low:high])
+                    # print("___________")
+                    # print((array[..., wi, hi])[low:high])
+                    new_array[i][wi][hi] = reduce(lambda x, y: np.logical_and(x, y), ((array[..., wi, hi])[low:high]))
+
+    def join_temporal_neighbours2(self, array, offset):
+        t, w, h = array.shape
+        new_array = np.zeros((t, w, h))
+        for i in range(t):
+            low = i - offset if i - offset > 0 else 0
+            high = i + offset + 1 if i + offset + 1 <= t else t
+            # print(low, high, low:high , wi, hi, array.shape)
+            # print(array[low:high])
+            # print("___________")
+            # print((array[..., wi, hi])[low:high])
+            new_array[i] = reduce(lambda x, y: np.logical_or(x, y), array[low:high])
+
+        return new_array
+
     def execute(self, eopatch):
-        eopatch.add_feature(FeatureType.DATA, 'B0', eopatch.data['BANDS'][..., [0]])
-        eopatch.add_feature(FeatureType.DATA, 'B1', eopatch.data['BANDS'][..., [1]])
-        eopatch.add_feature(FeatureType.DATA, 'B2', eopatch.data['BANDS'][..., [2]])
+
         bands = eopatch.data['BANDS']
         t, w, h, _ = bands.shape
 
         edge_vector = np.zeros((t, w, h))
-        for arg in self.edge_features:
+        averaged_edges = np.zeros((t, w, h, len(self.window_sizes)))
+
+        for i in range(len(self.edge_features)):
+            arg = self.edge_features[i]
             one_edge = self.extract_edges(eopatch, arg['FeatureType'], arg['FeatureName'],
                                           arg['CannyThresholds'][0], arg['CannyThresholds'][1], arg['BlurArguments'])
             edge_vector = edge_vector + one_edge
         edge_vector = edge_vector > 0
         eopatch.add_feature(FeatureType.MASK, 'SUM_EDGES', edge_vector[..., np.newaxis])
 
-        for unwanted, threshold in self.excluded_features:
-            mask = self.filter_unwanted_areas(eopatch, unwanted, threshold)
-            edge_vector = np.logical_or(edge_vector, mask)
+        for w_size in range(len(self.window_sizes)):
+            averaged_edges[..., w_size] = self.join_temporal_neighbours2(edge_vector, self.window_sizes[w_size])
+            eopatch.add_feature(FeatureType.MASK, 'SUM' + str(w_size) + '_EDGES',
+                                averaged_edges[..., w_size, np.newaxis])
 
-        #con = self.find_contours(edge_vector)
+            for unwanted, threshold in self.excluded_features:
+                mask = self.filter_unwanted_areas(eopatch, unwanted, threshold)
+                averaged_edges[..., w_size] = np.logical_or(averaged_edges[..., w_size], mask)
 
-        edge_vector = 1 - edge_vector
-        eopatch.add_feature(FeatureType.MASK, 'UNLABELED_SEGMENTS', edge_vector[..., np.newaxis])
-        components = self.connected_components(edge_vector)
+            # con = self.find_contours(edge_vector)
 
-        eopatch.add_feature(self.output_feature[0], self.output_feature[1], components[..., np.newaxis])
-        # print(eopatch)
+            averaged_edges[..., w_size] = 1 - averaged_edges[..., w_size]
+            #print(averaged_edges[..., w_size].shape)
+            eopatch.add_feature(FeatureType.MASK, 'UNLABELED' + str(w_size) + '_SEGMENTS',
+                                averaged_edges[..., w_size, np.newaxis])
+            components = self.connected_components(averaged_edges[..., w_size])
+            eopatch.add_feature(self.output_feature[0], self.output_feature[1] + ' ' + str(w_size),
+                                components[..., np.newaxis])
+
         return eopatch
 
 
@@ -130,18 +172,33 @@ st1 = [[[0, 0, 0],
         [0, 0, 0]]
        ]
 
-st2 = [[[0, 0, 0],
-        [0, 1, 0],
-        [0, 0, 0]
-        ],
-       [[0, 1, 0],
-        [1, 1, 1],
-        [0, 1, 0]
-        ],
-       [[0, 0, 0],
-        [0, 1, 0],
-        [0, 0, 0]]
-       ]
+connectivity_1 = \
+    [[[0, 0, 0],
+      [0, 1, 0],
+      [0, 0, 0]
+      ],
+     [[0, 1, 0],
+      [1, 1, 1],
+      [0, 1, 0]
+      ],
+     [[0, 0, 0],
+      [0, 1, 0],
+      [0, 0, 0]]
+     ]
+
+no_temporal = \
+    [[[0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0]
+      ],
+     [[0, 1, 0],
+      [1, 1, 1],
+      [0, 1, 0]
+      ],
+     [[0, 0, 0],
+      [0, 0, 0],
+      [0, 0, 0]]
+     ]
 
 segmentation = Segmentation(
     edge_features=[
@@ -167,11 +224,13 @@ segmentation = Segmentation(
          "BlurArguments": ((3, 3), 2)
          }
     ],
-    structuring_element=st2,
+    structuring_element=connectivity_1,
     excluded_features=[((FeatureType.DATA, 'NDVI'), 0.3)],
     dilation_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
     erosion_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
-    output_feature=(FeatureType.DATA, 'SEGMENTS'))
+    output_feature=(FeatureType.DATA, 'SEGMENTS'),
+    # window_sizes=[0,1,2,3,23])
+    window_sizes=[0, 1, 2])
 
 
 def rgb2gray(rgb):
