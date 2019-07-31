@@ -74,7 +74,7 @@ class Segmentation(EOTask):
             mask[time] = mask_cur
 
         mask = mask > 0
-        mask.shape
+        #mask.shape
         eopatch.add_feature(FeatureType.MASK, 'LOW_' + feature[1], mask[..., np.newaxis])
         return mask
 
@@ -205,18 +205,18 @@ segmentation = Segmentation(
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'EVI',
          "CannyThresholds": (40, 80),
-         "BlurArguments": ((5, 5), 2)
+         "BlurArguments": ((3, 3), 1)
          },
 
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'ARVI',
          "CannyThresholds": (40, 80),
-         "BlurArguments": ((5, 5), 2)
+         "BlurArguments": ((3, 3), 1)
          },
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'NDVI',
-         "CannyThresholds": (40, 100),
-         "BlurArguments": ((5, 5), 2)
+         "CannyThresholds": (40, 80),
+         "BlurArguments": ((3, 3), 1)
          },
         {"FeatureType": FeatureType.DATA,
          "FeatureName": 'GRAY',

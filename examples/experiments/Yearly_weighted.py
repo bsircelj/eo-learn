@@ -4,8 +4,9 @@ from eolearn.core import EOTask, LinearWorkflow, FeatureType, OverwritePermissio
 
 import cv2
 from scipy.ndimage.measurements import label
-
 import os
+
+from examples.experiments.Yearly_visualization import display
 
 os.getcwd()
 os.chdir("/home/beno/Documents/IJS/Perceptive-Sentinel/eo-learn/examples/experiments")
@@ -22,8 +23,9 @@ class Segmentation(EOTask):
                  erosion_mask,
                  output_feature,
                  adjust_function,
-                 #adjust_feature,
-                 adjust_threshold):
+                 # adjust_feature,
+                 adjust_threshold,
+                 yearly_low_threshold):
 
         self.edge_features = edge_features
         self.structuring_element = structuring_element
@@ -32,8 +34,9 @@ class Segmentation(EOTask):
         self.erosion_mask = erosion_mask
         self.output_feature = output_feature
         self.adjust_function = adjust_function
-        #self.adjust_feature = adjust_feature
+        # self.adjust_feature = adjust_feature
         self.adjust_threshold = adjust_threshold
+        self.yearly_low_threshold = yearly_low_threshold
 
     def debug(self, object):
         print(type(object), object)
@@ -59,24 +62,25 @@ class Segmentation(EOTask):
         kernel_size, sigma = blur
         smoothed_image = cv2.GaussianBlur(image, kernel_size, sigma)
         edges = cv2.Canny(smoothed_image.astype(np.uint8), low_threshold, high_threshold)
-        return edges
+        return edges > 0
 
     def filter_unwanted_areas(self, eopatch, feature, threshold):
         # Returns mask of areas that should be excluded (low NDVI etc...)
         bands = eopatch[feature[0]][feature[1]]
         t, w, h, _ = bands.shape
-        mask = np.zeros((t, w, h))
+        mask = np.zeros((w, h))
 
         for time in range(t):
             fet = eopatch[feature[0]][feature[1]][time].squeeze()
             mask_cur = fet <= threshold
             mask_cur = cv2.dilate((mask_cur * 255).astype(np.uint8), self.dilation_mask * 255)
             mask_cur = cv2.erode((mask_cur * 255).astype(np.uint8), self.erosion_mask * 255)
-            mask[time] = mask_cur
+            mask = mask + mask_cur
 
-        mask = mask > 0
-        mask.shape
-        eopatch.add_feature(FeatureType.MASK, 'LOW_' + feature[1], mask[..., np.newaxis])
+        # print(mask[0:20, 0:20]/t)
+        mask = (mask / t) > self.yearly_low_threshold
+        # mask.shape
+        eopatch.add_feature(FeatureType.MASK_TIMELESS, 'LOW_' + feature[1], mask[..., np.newaxis])
         return mask
 
     def connected_components(self, image):
@@ -91,36 +95,53 @@ class Segmentation(EOTask):
 
         return connected
 
+    def normalize_feature(self, feature):
+        f_min = np.min(feature)
+        f_max = np.max(feature)
+        return (feature - f_min) / f_max
+
     def execute(self, eopatch):
         # eopatch.add_feature(FeatureType.DATA, 'WEIGHT',
 
         bands = eopatch.data['BANDS']
         t, w, h, _ = bands.shape
 
-        edge_vector = np.zeros((t, w, h))
-        for arg in self.edge_features:
+        no_feat = len(self.edge_features)
+        edge_vector = np.zeros((no_feat, t, w, h))
+        # sum_vector = np.zeros((no_feat,t, w, h))
+        for i in range(no_feat):
+            arg = self.edge_features[i]
             one_edge = self.extract_edges(eopatch, arg['FeatureType'], arg['FeatureName'],
                                           arg['CannyThresholds'][0], arg['CannyThresholds'][1], arg['BlurArguments'])
-            print(eopatch[arg['FeatureType']][arg['FeatureName']].squeeze()[0].shape)
-            weight = [self.adjust_function(x) for x in eopatch[arg['FeatureType']][arg['FeatureName']].squeeze()]
-            edge_vector = edge_vector + one_edge * weight
+            # print(eopatch[arg['FeatureType']][arg['FeatureName']].squeeze()[0].shape)
+            v1 = eopatch[arg['FeatureType']][arg['FeatureName']].squeeze()
+            v1 = self.normalize_feature(v1)
+            # print(v1.shape)
+            # print(v1[5][100:120][100:120])
+            v1 = [self.adjust_function(x) for x in v1]
+            # print(v1[5][100:120][100:120])
+            # weight = [self.adjust_function(x) for x in eopatch[arg['FeatureType']][arg['FeatureName']].squeeze()]
+            edge_vector[i] = one_edge * v1
 
         # edge_vector = edge_vector
-        edge_vector = sum(edge_vector[:]) > self.adjust_threshold#____________________TODO
-        eopatch.add_feature(FeatureType.MASK_TIMELESS, 'SUM_EDGES', edge_vector[..., np.newaxis])
+        edge_vector1 = np.sum(edge_vector, (0, 1))
+        edge_vector1 = edge_vector1 / (t * len(self.edge_features))
+        edge_vector = edge_vector1 > self.adjust_threshold
+        eopatch.add_feature(FeatureType.MASK_TIMELESS, 'WEIGHTED_EDGES', edge_vector[..., np.newaxis])
 
-        for unwanted, threshold in self.excluded_features:#____________________TODO
+        for unwanted, threshold in self.excluded_features:
             mask = self.filter_unwanted_areas(eopatch, unwanted, threshold)
+
             edge_vector = np.logical_or(edge_vector, mask)
 
         # con = self.find_contours(edge_vector)
 
-        edge_vector = 1 - edge_vector#____________________TODO temporal->yearly
-        eopatch.add_feature(FeatureType.MASK, 'UNLABELED_SEGMENTS', edge_vector[..., np.newaxis])
+        edge_vector = 1 - edge_vector
+        eopatch.add_feature(FeatureType.MASK_TIMELESS, 'WEIGHTED_SEGMENTS', edge_vector[..., np.newaxis])
         components = self.connected_components(edge_vector)
 
         eopatch.add_feature(self.output_feature[0], self.output_feature[1], components[..., np.newaxis])
-        # print(eopatch)
+        print(eopatch)
         return eopatch
 
 
@@ -151,6 +172,10 @@ st2 = [[[0, 0, 0],
         [0, 1, 0],
         [0, 0, 0]]
        ]
+structuring_2d = [[0, 1, 0],
+                  [1, 1, 1],
+                  [0, 1, 0]
+                  ]
 
 segmentation = Segmentation(
     edge_features=[
@@ -176,13 +201,14 @@ segmentation = Segmentation(
          "BlurArguments": ((3, 3), 2)
          }
     ],
-    structuring_element=st2,
+    structuring_element=structuring_2d,
     excluded_features=[((FeatureType.DATA, 'NDVI'), 0.3)],
     dilation_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (5, 5)),
     erosion_mask=cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (3, 3)),
-    output_feature=(FeatureType.DATA, 'SEGMENTS'),
+    output_feature=(FeatureType.DATA_TIMELESS, 'SEGMENTS'),
     adjust_function=lambda x: cv2.GaussianBlur(x, (9, 9), 5),
-    adjust_threshold=40)
+    adjust_threshold=0.05,
+    yearly_low_threshold=0.8)
 
 
 def rgb2gray(rgb):
@@ -228,3 +254,5 @@ workflow = LinearWorkflow(
 )
 
 workflow.execute(extra_param)
+
+display()
