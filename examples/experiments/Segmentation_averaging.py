@@ -53,7 +53,8 @@ class Segmentation(EOTask):
         ##########QUICK NORMALIZATION -  SHOULD BE LATER IMPROVED / MOVED SOMEWHERE ELSE
         f_min = np.min(image)
         f_max = np.max(image)
-        image = (image - f_min) / f_max * 255
+        if f_max - f_min != 0:
+            image = (image - f_min) / (f_max - f_min) * 255
         image = image.squeeze()
         kernel_size, sigma = blur
         smoothed_image = cv2.GaussianBlur(image, kernel_size, sigma)
@@ -74,7 +75,7 @@ class Segmentation(EOTask):
             mask[time] = mask_cur
 
         mask = mask > 0
-        #mask.shape
+        # mask.shape
         eopatch.add_feature(FeatureType.MASK, 'LOW_' + feature[1], mask[..., np.newaxis])
         return mask
 
@@ -147,7 +148,7 @@ class Segmentation(EOTask):
             # con = self.find_contours(edge_vector)
 
             averaged_edges[..., w_size] = 1 - averaged_edges[..., w_size]
-            #print(averaged_edges[..., w_size].shape)
+            # print(averaged_edges[..., w_size].shape)
             eopatch.add_feature(FeatureType.MASK, 'UNLABELED' + str(w_size) + '_SEGMENTS',
                                 averaged_edges[..., w_size, np.newaxis])
             components = self.connected_components(averaged_edges[..., w_size])
@@ -222,7 +223,22 @@ segmentation = Segmentation(
          "FeatureName": 'GRAY',
          "CannyThresholds": (5, 40),
          "BlurArguments": ((3, 3), 2)
-         }
+         },
+        {"FeatureType": FeatureType.DATA,
+         "FeatureName": 'NDVI_SLOPE',
+         "CannyThresholds": (40, 80),
+         "BlurArguments": ((3, 3), 1)
+         },
+        {"FeatureType": FeatureType.DATA,
+         "FeatureName": 'EVI_SLOPE',
+         "CannyThresholds": (40, 80),
+         "BlurArguments": ((3, 3), 1)
+         },
+        {"FeatureType": FeatureType.DATA,
+         "FeatureName": 'ARVI_SLOPE',
+         "CannyThresholds": (40, 80),
+         "BlurArguments": ((3, 3), 1)
+         },
     ],
     structuring_element=connectivity_1,
     excluded_features=[((FeatureType.DATA, 'NDVI'), 0.3)],

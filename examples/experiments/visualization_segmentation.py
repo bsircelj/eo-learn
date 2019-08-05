@@ -29,6 +29,9 @@ class IndexTracker(object):
 
             self.t[i]['im'] = t[i]['ax'].imshow(self.t[i]['data'][self.ind, ...], cmap=self.t[i]['cmap'])
 
+            #plt.figure('init')
+            #plt.imshow(self.t[i]['data'][self.ind, ...])
+
         self.update()
 
     def onscroll(self, event):
@@ -42,11 +45,14 @@ class IndexTracker(object):
     def update(self):
         for a in t:
             a['im'].set_data(a['data'][self.ind, :, :])
+
+            #plt.figure('update')
+            #plt.imshow(a['data'][self.ind, :, :])
             # self.ax.set_title('%s' % self.ind)
             # self.ax.set_title(timestamps[self.ind])
             if self.fig != None:
                 self.fig.suptitle(timestamps[self.ind])
-            #a['im'].axes.figure.canvas.draw()
+            # a['im'].axes.figure.canvas.draw()
         self.fig.canvas.draw()
 
 
@@ -87,7 +93,7 @@ def color_patch(image, colors=None):
 
 if __name__ == "__main__":
     eopatch = EOPatch.load('./eopatch/patch2', lazy_loading=True)
-    print(eopatch)
+    #print(eopatch)
     argument_data = [
         (FeatureType.DATA, 'B0'),
         (FeatureType.DATA, 'B1'),
@@ -98,35 +104,55 @@ if __name__ == "__main__":
     timestamps = eopatch.timestamp
 
     # print(bands.shape)
-    width, height = 5, 2
+    width, height = 4, 2
     tracker = []
     fig, ax = plt.subplots(height, width)
     fig.set_size_inches(20, 20)
     i = 0
 
-    data = [[FeatureType.DATA, 'SEGMENTS 0', None],
-            [FeatureType.MASK, 'UNLABELED0_SEGMENTS', 'gray'],
-            [FeatureType.DATA, 'SEGMENTS 1', None],
-            [FeatureType.MASK, 'UNLABELED1_SEGMENTS', 'gray'],
-            [FeatureType.DATA, 'SEGMENTS 2', None],
-            [FeatureType.MASK, 'UNLABELED2_SEGMENTS', 'gray'],
-            [FeatureType.MASK, 'LOW_NDVI', 'gray'],
-            [FeatureType.MASK, 'SUM_EDGES', 'gray'],
-            [FeatureType.DATA, 'NDVI', 'YlGn'],
-            [FeatureType.MASK, 'NDVI_EDGE', 'gray'],
-            #[FeatureType.DATA, 'EVI', 'RdPu'],
-            #[FeatureType.MASK, 'EVI_EDGE', 'gray'],
-            #[FeatureType.DATA, 'ARVI', 'Blues'],
-            #[FeatureType.MASK, 'ARVI_EDGE', 'gray'],
-            # [FeatureType.DATA, 'GRAY', 'gray'],
-            # [FeatureType.MASK, 'GRAY_EDGE', 'gray']
-            ]
+    data = [  # [FeatureType.DATA, 'SEGMENTS 0', None],
+        # [FeatureType.MASK, 'UNLABELED0_SEGMENTS', 'gray'],
+        [FeatureType.DATA, 'SEGMENTS 1', None],
+        [FeatureType.MASK, 'UNLABELED1_SEGMENTS', 'gray'],
+        # [FeatureType.DATA, 'SEGMENTS 2', None],
+        # [FeatureType.MASK, 'UNLABELED2_SEGMENTS', 'gray'],
+        [FeatureType.DATA, 'EVI', 'RdPu'],
+        [FeatureType.DATA, 'EVI_SLOPE', 'RdPu'],
+        [FeatureType.DATA, 'ARVI', 'Blues'],
+        [FeatureType.DATA, 'ARVI_SLOPE', 'Blues'],
+        [FeatureType.DATA, 'NDVI', 'YlGn'],
+        [FeatureType.DATA, 'NDVI_SLOPE', 'YlGn'],
+        # [FeatureType.DATA, 'EVI', 'RdPu'],
+        # [FeatureType.MASK, 'EVI_EDGE', 'gray'],
+        # [FeatureType.DATA, 'ARVI', 'Blues'],
+        # [FeatureType.MASK, 'ARVI_EDGE', 'gray'],
+        # [FeatureType.DATA, 'GRAY', 'gray'],
+        # [FeatureType.MASK, 'GRAY_EDGE', 'gray']
+    ]
+
+    # aaa = eopatch[FeatureType.DATA, 'NDVI_SLOPE'][10].squeeze()
+    #aaa = eopatch[data[3][0]][data[3][1]].squeeze()
+
+    # aaa = aaa[10]
+    #print(aaa[100:120, 100:120])
+    #plt.figure(2)
+    #plt.imshow(aaa[10], cmap='gray')
+    # plt.show()
 
     i = 0
     t = []
     for w in range(width):
         for h in range(height):
+
+            #w = 0
+            #h = 1
             x = eopatch[data[i][0]][data[i][1]].squeeze()
+            print(str(data[i][0]) + ' ' + data[i][1])
+            print(x.shape)
+
+            print(data[i][1])
+            print(type(x))
+            print(x[10, 100:110, 100:110])
             if data[i][1] == 'SEGMENTS 0' or data[i][1] == 'SEGMENTS 1' or data[i][1] == 'SEGMENTS 2':
                 x = color_patches_temporal(x)
             t.append(

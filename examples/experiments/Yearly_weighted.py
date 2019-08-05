@@ -98,7 +98,7 @@ class Segmentation(EOTask):
     def normalize_feature(self, feature):
         f_min = np.min(feature)
         f_max = np.max(feature)
-        return (feature - f_min) / f_max
+        return (feature - f_min) / (f_max - f_min)
 
     def execute(self, eopatch):
         # eopatch.add_feature(FeatureType.DATA, 'WEIGHT',
