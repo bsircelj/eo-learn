@@ -78,7 +78,7 @@ class ConstructVector(EOTask):
         self.name = name
         self.values = args
 
-    def execute(self, eopatch): # TODO, probat dodat se lokacije not
+    def execute(self, eopatch):
         # h, w, _ = eopatch.data['BANDS']
         vector = None
         for v in self.values:
@@ -90,6 +90,20 @@ class ConstructVector(EOTask):
         return eopatch
 
 
+class JoinTemporalFeatures(EOTask):
+    def __init__(self, *args):
+        self.features = args
+        # self.description = ['max_val','min_val','mean_val','sd_val','diff_max','diff_min',
+
+    def execute(self, eopatch):
+        data_sum = None
+        for f in self.features:
+            names, data = f.get_data(eopatch)
+            data_sum = data if data_sum is None else np.append(data_sum, data, axis=2)
+        eopatch.add_feature(FeatureType.DATA_TIMELESS, 'FILIP_ALL', data_sum)
+        print(eopatch)
+        return eopatch
+
 addStreamNDVI = AddStreamTemporalFeaturesTask(data_feature='NDVI')
 addStreamSAVI = AddStreamTemporalFeaturesTask(data_feature='SAVI')
 addStreamEVI = AddStreamTemporalFeaturesTask(data_feature='EVI')
@@ -99,6 +113,8 @@ addStreamNDWI = AddStreamTemporalFeaturesTask(data_feature='NDWI')
 
 create4 = ConstructVector('FILIP_FEATURES', 'NDVI_sd_val', 'EVI_min_val', 'ARVI_max_mean_len', 'SIPI_mean_val')
 
+create_all = JoinTemporalFeatures(addStreamNDVI, addStreamARVI, addStreamEVI, addStreamNDWI, addStreamSAVI,
+                                  addStreamSIPI)
 '''
 3 ['NDVI_sd_val' 'NDVI_max_mean_surf' 'EVI_mean_val']
 4 ['NDVI_sd_val' 'EVI_min_val' 'ARVI_max_mean_len' 'SIPI_mean_val']
@@ -116,8 +132,8 @@ if not os.path.isdir(save_path_location):
 save = SaveToDisk(save_path_location, overwrite_permission=OverwritePermission.OVERWRITE_PATCH)
 
 extra_param = {
-    load: {'eopatch_folder': 'patch3'},
-    save: {'eopatch_folder': 'patch4'}
+    load: {'eopatch_folder': 'patch4'},
+    save: {'eopatch_folder': 'patch_all_f'}
 }
 '''
 workflow = LinearWorkflow(
@@ -127,7 +143,8 @@ workflow = LinearWorkflow(
 '''
 workflow = LinearWorkflow(
     load,
-    create4,
+    # create4,
+    create_all,
     save
 )
 '''

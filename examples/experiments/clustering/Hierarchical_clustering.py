@@ -74,7 +74,7 @@ class Clustering(EOTask):
 
 
 #clustering = Clustering("FILIP_FEATURES", "CLUSTERS", n_clusters=30000) #0.000000015
-clustering = Clustering("FILIP_FEATURES", "CLUSTERS", distance_threshold=15*10**-9)
+clustering = Clustering("FILIP_FEATURES", "CLUSTERS", distance_threshold=5*10**-9)
 
 patch_location = './eopatch/'
 load = LoadFromDisk(patch_location)

@@ -39,4 +39,4 @@ def display():
 
     plt.show()
 
-#display()
+display()
