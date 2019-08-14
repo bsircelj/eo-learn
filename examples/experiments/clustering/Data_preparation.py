@@ -1,7 +1,9 @@
+import enum
 import os
 import sys
 import numpy as np
 # import matplotlib.pyplot as plt
+import matplotlib as mpl
 from eolearn.core import EOTask, LinearWorkflow, FeatureType, OverwritePermission, LoadFromDisk, SaveToDisk
 # sys.stderr = open(os.devnull, "w")
 # from eolearn.features import AddStreamTemporalFeaturesTask
@@ -9,6 +11,21 @@ from eolearn.core import EOTask, LinearWorkflow, FeatureType, OverwritePermissio
 # from eolearn.ml_tools.utilities import rolling_window
 # from scipy.ndimage.measurements import label
 from temporal_features_copy import AddStreamTemporalFeaturesTask
+import geopandas as gpd
+
+from geometry.eolearn.geometry import VectorToRaster
+
+
+class allValid(EOTask):
+
+    def __init__(self, mask_name):
+        self.mask_name = mask_name
+
+    def execute(self, eopatch):
+        #print(eopatch)
+        t, w, h, _ = eopatch.data['BANDS'].shape
+        eopatch.add_feature(FeatureType.MASK, self.mask_name, np.ones((t, w, h, 1)))
+        return eopatch
 
 
 class printPatch(EOTask):
@@ -73,6 +90,25 @@ class AddFeatures(EOTask):
  '''
 
 
+class LULC(enum.Enum):
+    NO_DATA = (0, 'No Data', 'white')
+    CULTIVATED_LAND = (1, 'Cultivated Land', 'xkcd:lime')
+    FOREST = (2, 'Forest', 'xkcd:darkgreen')
+    GRASSLAND = (3, 'Grassland', 'orange')
+    SHRUBLAND = (4, 'Shrubland', 'xkcd:tan')
+    WATER = (5, 'Water', 'xkcd:azure')
+    WETLAND = (6, 'Wetlands', 'xkcd:lightblue')
+    TUNDRA = (7, 'Tundra', 'xkcd:lavender')
+    ARTIFICIAL_SURFACE = (8, 'Artificial Surface', 'crimson')
+    BARELAND = (9, 'Bareland', 'xkcd:beige')
+    SNOW_AND_ICE = (10, 'Snow and Ice', 'black')
+
+    def __init__(self, val1, val2, val3):
+        self.id = val1
+        self.class_name = val2
+        self.color = val3
+
+
 class ConstructVector(EOTask):
     def __init__(self, name, *args):
         self.name = name
@@ -104,6 +140,33 @@ class JoinTemporalFeatures(EOTask):
         print(eopatch)
         return eopatch
 
+
+lulc_cmap = mpl.colors.ListedColormap([entry.color for entry in LULC])
+lulc_norm = mpl.colors.BoundaryNorm(np.arange(-0.5, 11, 1), lulc_cmap.N)
+
+land_cover_path = 'land_cover_subset_small.shp'
+
+land_cover = gpd.read_file(land_cover_path)
+
+land_cover_val = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
+land_cover_array = []
+for val in land_cover_val:
+    temp = land_cover[land_cover.lulcid == val]
+    temp.reset_index(drop=True, inplace=True)
+    land_cover_array.append(temp)
+    del temp
+
+rshape = (FeatureType.MASK, 'IS_VALID')
+
+land_cover_task_array = []
+for el, val in zip(land_cover_array, land_cover_val):
+    land_cover_task_array.append(VectorToRaster(
+        feature=(FeatureType.MASK_TIMELESS, 'LULC'),
+        vector_data=el,
+        raster_value=val,
+        raster_shape=rshape,
+        raster_dtype=np.uint8))
+
 addStreamNDVI = AddStreamTemporalFeaturesTask(data_feature='NDVI')
 addStreamSAVI = AddStreamTemporalFeaturesTask(data_feature='SAVI')
 addStreamEVI = AddStreamTemporalFeaturesTask(data_feature='EVI')
@@ -112,6 +175,9 @@ addStreamSIPI = AddStreamTemporalFeaturesTask(data_feature='SIPI')
 addStreamNDWI = AddStreamTemporalFeaturesTask(data_feature='NDWI')
 
 create4 = ConstructVector('FILIP_FEATURES', 'NDVI_sd_val', 'EVI_min_val', 'ARVI_max_mean_len', 'SIPI_mean_val')
+
+create6 = ConstructVector('FILIP_FEATURES', 'NDVI_sd_val', 'EVI_min_val', 'ARVI_max_mean_len', 'SIPI_mean_val',
+                          'NDVI_max_mean_surf', 'SAVI_min_val')
 
 create_all = JoinTemporalFeatures(addStreamNDVI, addStreamARVI, addStreamEVI, addStreamNDWI, addStreamSAVI,
                                   addStreamSIPI)
@@ -132,8 +198,8 @@ if not os.path.isdir(save_path_location):
 save = SaveToDisk(save_path_location, overwrite_permission=OverwritePermission.OVERWRITE_PATCH)
 
 extra_param = {
-    load: {'eopatch_folder': 'patch4'},
-    save: {'eopatch_folder': 'patch_all_f'}
+    load: {'eopatch_folder': 'patch08_LULC'},
+    save: {'eopatch_folder': 'patch10_six'}
 }
 '''
 workflow = LinearWorkflow(
@@ -143,8 +209,11 @@ workflow = LinearWorkflow(
 '''
 workflow = LinearWorkflow(
     load,
-    # create4,
-    create_all,
+    create6,
+    # create_all,
+    #allValid('IS_VALID'),
+    #*land_cover_task_array,
+    #printPatch(),
     save
 )
 '''
