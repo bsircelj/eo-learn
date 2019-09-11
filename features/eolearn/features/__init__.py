@@ -3,7 +3,7 @@ A collection of EOTasks for feature manipulation
 """
 
 from .temporal_features import AddSpatioTemporalFeaturesTask, AddMaxMinTemporalIndicesTask, \
-    AddMaxMinNDVISlopeIndicesTask
+    AddMaxMinNDVISlopeIndicesTask, AddStreamTemporalFeaturesTask
 from .interpolation import InterpolationTask, LinearInterpolation, CubicInterpolation, SplineInterpolation, \
     BSplineInterpolation, AkimaInterpolation, ResamplingTask, NearestResampling, LinearResampling, CubicResampling, \
     KrigingInterpolation, LegacyInterpolation
@@ -15,6 +15,6 @@ from .radiometric_normalization import ReferenceScenes, HistogramMatching, BlueC
 from .blob import BlobTask, DoGBlobTask, DoHBlobTask, LoGBlobTask
 from .hog import HOGTask
 from .local_binary_pattern import LocalBinaryPatternTask
-
+from .clustering import ClusteringTask
 
 __version__ = '0.4.2'
