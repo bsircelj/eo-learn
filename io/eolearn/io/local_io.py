@@ -1,5 +1,15 @@
 """
 Module containing tasks used for reading and writing to disk
+
+Credits:
+Copyright (c) 2017-2019 Matej Aleksandrov, Matej Batič, Andrej Burja, Eva Erzin (Sinergise)
+Copyright (c) 2017-2019 Grega Milčinski, Matic Lubej, Devis Peresutti, Jernej Puc, Tomislav Slijepčević (Sinergise)
+Copyright (c) 2017-2019 Blaž Sovdat, Jovan Višnjić, Anže Zupanc, Lojze Žust (Sinergise)
+Copyright (c) 2018-2019 William Ouellette
+Copyright (c) 2019 Drew Bollinger (DevelopmentSeed)
+
+This source code is licensed under the MIT license found in the LICENSE
+file in the root directory of this source tree.
 """
 
 import os
@@ -35,16 +45,26 @@ class BaseLocalIo(EOTask):
         self.image_dtype = image_dtype
         self.no_data_value = no_data_value
 
-    def _get_file_path(self, filename):
-        """ Builds a file path from values obtained at class initialization and in execute method
+    def _get_file_path(self, filename, create_dir=False):
+        """ Builds a file path from values obtained at class initialization and in execute method.
+        If create_dir is set to True, non existing directories are automatically created.
         """
         if self.folder is None:
             if filename is None:
                 raise ValueError("At least one of parameters 'folder' and 'filename' has to be specified")
-            return filename
-        if filename is None:
-            return self.folder
-        return os.path.join(self.folder, filename)
+            path = filename
+        elif filename is None:
+            path = self.folder
+        else:
+            path = os.path.join(self.folder, filename)
+
+        # Create directory of path if it doesn't exist
+        if create_dir:
+            path_dir = os.path.dirname(path)
+            if path_dir != '' and not os.path.exists(path_dir):
+                os.makedirs(path_dir)
+
+        return path
 
     @abstractmethod
     def execute(self, eopatch, **kwargs):
@@ -71,10 +91,11 @@ class ExportToTiff(BaseLocalIo):
         :param folder: A directory containing image files or a path of an image file
         :type folder: str
         :param band_indices: Bands to be added to tiff image. Bands are represented by their 0-based index as tuple
-        in the inclusive interval form `(start_band, end_band)` or as list in the form `[band_1, band_2,...,band_n]`.
+            in the inclusive interval form `(start_band, end_band)` or as list in the form
+            `[band_1, band_2,...,band_n]`.
         :type band_indices: tuple or list or None
         :param date_indices: Dates to be added to tiff image. Dates are represented by their 0-based index as tuple
-        in the inclusive interval form `(start_date, end_date)` or a list in the form `[date_1, date_2,...,date_n]`.
+            in the inclusive interval form `(start_date, end_date)` or a list in the form `[date_1, date_2,...,date_n]`.
         :type date_indices: tuple or list or None
         :param image_dtype: Type of data to be exported into tiff image
         :type image_dtype: numpy.dtype
@@ -135,7 +156,7 @@ class ExportToTiff(BaseLocalIo):
         :param eopatch: input EOPatch
         :type eopatch: EOPatch
         :param filename: filename of tiff file or None if entire path has already been specified in `folder` parameter
-        of task initialization.
+            of task initialization.
         :type filename: str or None
         :return: Unchanged input EOPatch
         :rtype: EOPatch
@@ -168,7 +189,7 @@ class ExportToTiff(BaseLocalIo):
                           'numpy.int32 instead'.format((feature_type, feature_name)))
 
         # Write it out to a file
-        with rasterio.open(self._get_file_path(filename), 'w', driver='GTiff',
+        with rasterio.open(self._get_file_path(filename, create_dir=True), 'w', driver='GTiff',
                            width=width, height=height,
                            count=index,
                            dtype=image_dtype, nodata=self.no_data_value,
@@ -197,11 +218,11 @@ class ImportFromTiff(BaseLocalIo):
         :param folder: A directory containing image files or a path of an image file
         :type folder: str
         :param timestamp_size: In case data will be imported into time-dependant feature this parameter can be used to
-        specify time dimension. If not specified, time dimension will be the same as size of FeatureType.TIMESTAMP
-        feature. If FeatureType.TIMESTAMP does not exist it will be set to 1.
-        When converting data into a feature channels of given tiff image should be in order
-        T(1)B(1), T(1)B(2), ..., T(1)B(N), T(2)B(1), T(2)B(2), ..., T(2)B(N), ..., ..., T(M)B(N)
-        where T and B are the time and band indices.
+            specify time dimension. If not specified, time dimension will be the same as size of FeatureType.TIMESTAMP
+            feature. If FeatureType.TIMESTAMP does not exist it will be set to 1.
+            When converting data into a feature channels of given tiff image should be in order
+            T(1)B(1), T(1)B(2), ..., T(1)B(N), T(2)B(1), T(2)B(2), ..., T(2)B(N), ..., ..., T(M)B(N)
+            where T and B are the time and band indices.
         :type timestamp_size: int
         :param image_dtype: Type of data of new feature imported from tiff image
         :type image_dtype: numpy.dtype
@@ -244,7 +265,7 @@ class ImportFromTiff(BaseLocalIo):
         :param eopatch: input EOPatch or None if a new EOPatch should be created
         :type eopatch: EOPatch or None
         :param filename: filename of tiff file or None if entire path has already been specified in `folder` parameter
-        of task initialization.
+            of task initialization.
         :type filename: str or None
         :return: New EOPatch with added raster layer
         :rtype: EOPatch

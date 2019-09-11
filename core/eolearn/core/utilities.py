@@ -1,6 +1,14 @@
 """
 The utilities module is a collection of classes and functions used across the eolearn package, such as checking whether
 two objects are deeply equal, padding of an image, etc.
+
+Credits:
+Copyright (c) 2017-2019 Matej Aleksandrov, Matej Batič, Andrej Burja, Eva Erzin (Sinergise)
+Copyright (c) 2017-2019 Grega Milčinski, Matic Lubej, Devis Peresutti, Jernej Puc, Tomislav Slijepčević (Sinergise)
+Copyright (c) 2017-2019 Blaž Sovdat, Jovan Višnjić, Anže Zupanc, Lojze Žust (Sinergise)
+
+This source code is licensed under the MIT license found in the LICENSE
+file in the root directory of this source tree.
 """
 
 import logging
@@ -470,3 +478,8 @@ def constant_pad(X, multiple_of, up_down_rule='even', left_right_rule='even', pa
 
     return np.lib.pad(X, ((row_padding_up, row_padding_down), (col_padding_left, col_padding_right)),
                       'constant', constant_values=((pad_value, pad_value), (pad_value, pad_value)))
+
+
+def bgr_to_rgb(bgr):
+    """Converts Blue, Green, Red to Red, Green, Blue."""
+    return bgr[..., [2, 1, 0]]
