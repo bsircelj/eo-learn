@@ -111,7 +111,7 @@ class Segmentation(EOTask):
         components = self.connected_components(edge_vector)
 
         eopatch.add_feature(self.output_feature[0], self.output_feature[1], components[..., np.newaxis])
-        # print(eopatch)
+        print(eopatch)
         return eopatch
 
 
@@ -205,8 +205,8 @@ if not os.path.isdir(save_path_location):
 save = SaveToDisk(save_path_location, overwrite_permission=OverwritePermission.OVERWRITE_PATCH)
 
 extra_param = {
-    load: {'eopatch_folder': 'patch1'},
-    save: {'eopatch_folder': 'patch2'}
+    load: {'eopatch_folder': 'patch09_clusters'},
+    save: {'eopatch_folder': 'patch10_edges'}
 }
 
 workflow = LinearWorkflow(

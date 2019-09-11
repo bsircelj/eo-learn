@@ -242,8 +242,8 @@ if not os.path.isdir(save_path_location):
 save = SaveToDisk(save_path_location, overwrite_permission=OverwritePermission.OVERWRITE_PATCH)
 
 extra_param = {
-    load: {'eopatch_folder': 'patch1'},
-    save: {'eopatch_folder': 'patch2'}
+    load: {'eopatch_folder': 'patch10_edges'},
+    save: {'eopatch_folder': 'patch10_edges'}
 }
 
 workflow = LinearWorkflow(
@@ -255,4 +255,4 @@ workflow = LinearWorkflow(
 
 workflow.execute(extra_param)
 
-display()
+#display()

@@ -16,6 +16,8 @@ def evaluate_clusters(predicted, truth, no_clusters=None):
 
     def each_pix(acc, current_pix):
         pred, tru = current_pix
+        if pred == 0:
+            return acc
         if acc[pred] is None:
             acc[pred] = [tru]
         else:
@@ -32,7 +34,8 @@ def evaluate_clusters(predicted, truth, no_clusters=None):
         return acc + st
 
     total_corr = reduce(count, score.values(), 0)
-    total_size = predicted.size
+    total_size = predicted.size - sum(predicted == 0)
+
     return total_corr / total_size
 
 

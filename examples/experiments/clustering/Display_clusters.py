@@ -74,17 +74,28 @@ class LULC(enum.Enum):
 
 
 def display(title='Clustering'):
-    eopatch = EOPatch.load('./eopatch/patch09_clusters', lazy_loading=True)
-    print(eopatch)
+    eopatch = EOPatch.load('./eopatch/TestResults', lazy_loading=True)
+    # print(eopatch)
     # plt.suptitle(title)
-    ax = plt.subplot(1, 2, 1)
-    seg = eopatch.data_timeless['CLUSTERS'].squeeze()
+    plt.subplot(1, 2, 1)
+    data = eopatch.data_timeless['clusters_small']
+    # data = [-1 if x is None else x for x in data]
+    # data = data + 1
+    seg = data.squeeze()
+    plt.imshow(color_patch(seg))
 
-    filtered = filter_unwanted_areas(eopatch, (FeatureType.DATA, 'NDVI'), 0.3)
+    plt.subplot(1, 2, 2)
+    data = eopatch.data_timeless['clusters_mask']
+    # data = [-1 if x is None else x for x in data]
+    # data = data + 1
+    seg = data.squeeze()
+    plt.imshow(color_patch(seg))
+    # print(seg)
+    # filtered = filter_unwanted_areas(eopatch, (FeatureType.DATA, 'NDVI'), 0.3)
 
-    seg[filtered == 1] = 0
+    # seg[filtered == 1] = 0
 
-    ax.imshow(color_patch(seg))
+    # ax.imshow(color_patch(seg))
     # ax.set_title("4 features")
     '''
     ax2 = plt.subplot(1, 2, 2)
@@ -92,7 +103,8 @@ def display(title='Clustering'):
     plt.imshow(color_patch(seg1))
     ax2.set_title("108 features")
     '''
-    ax2 = plt.subplot(1, 2, 2)
+    '''
+    ax2 = plt.subplot(1, 3, 3)
 
     lulc_cmap = mpl.colors.ListedColormap([entry.color for entry in LULC])
     lulc_norm = mpl.colors.BoundaryNorm(np.arange(-0.5, 11, 1), lulc_cmap.N)
@@ -100,8 +112,13 @@ def display(title='Clustering'):
 
     ax2.imshow(lulc, cmap=lulc_cmap, norm=lulc_norm)
 
-    plt.suptitle("{:.3f}% with majority class".format(evaluate_clusters(seg, lulc)*100))
+    ax.set_title("{:.3f}%".format(evaluate_clusters(seg, lulc) * 100))
 
+    ax3 = plt.subplot(1, 3, 2)
+    seg_edge = eopatch.data_timeless['SEGMENTS'].squeeze()
+    ax3.imshow(color_patch(seg_edge))
+    ax3.set_title("{:.2f}%".format(evaluate_clusters(seg_edge, lulc) * 100))
+    '''
     plt.show()
 
 

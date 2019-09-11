@@ -198,8 +198,8 @@ if not os.path.isdir(save_path_location):
 save = SaveToDisk(save_path_location, overwrite_permission=OverwritePermission.OVERWRITE_PATCH)
 
 extra_param = {
-    load: {'eopatch_folder': 'patch08_LULC'},
-    save: {'eopatch_folder': 'patch10_six'}
+    load: {'eopatch_folder': 'patch2'},
+    save: {'eopatch_folder': 'patch11_edges'}
 }
 '''
 workflow = LinearWorkflow(
@@ -209,11 +209,12 @@ workflow = LinearWorkflow(
 '''
 workflow = LinearWorkflow(
     load,
+
     create6,
-    # create_all,
-    #allValid('IS_VALID'),
-    #*land_cover_task_array,
-    #printPatch(),
+    create_all,
+    allValid('IS_VALID'),
+    *land_cover_task_array,
+    printPatch(),
     save
 )
 '''
