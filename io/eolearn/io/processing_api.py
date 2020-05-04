@@ -54,6 +54,8 @@ class SentinelHubInputBase(EOTask):
         if eopatch is None:
             eopatch = EOPatch()
             eopatch.bbox = bbox
+        else:
+            bbox = eopatch.bbox
 
         if self.size is not None:
             size_x, size_y = self.size
@@ -64,7 +66,7 @@ class SentinelHubInputBase(EOTask):
             time_interval = parse_time_interval(time_interval)
             timestamp = self._get_timestamp(time_interval, bbox)
         else:
-            timestamp = None
+            timestamp = eopatch.timestamp
 
         if eopatch.timestamp:
             self.check_timestamp_difference(timestamp, eopatch.timestamp)
@@ -123,11 +125,12 @@ class SentinelHubInputBase(EOTask):
         """
 
 
+ProcApiType = collections.namedtuple('ProcApiType', 'id unit sample_type np_dtype feature_type')
+
+
 class SentinelHubInputTask(SentinelHubInputBase):
     """ A processing API input task that loads 16bit integer data and converts it to a 32bit float feature.
     """
-
-    ProcApiType = collections.namedtuple('ProcApiType', 'id unit sample_type np_dtype feature_type')
 
     PREDEFINED_BAND_TYPES = {
         ProcApiType("mask", 'DN', 'UINT8', np.bool, FeatureType.MASK): [

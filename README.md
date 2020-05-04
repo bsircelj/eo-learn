@@ -48,7 +48,7 @@ At the moment there are the following subpackages:
 
 ### PyPi distribution
 
-The package requires Python version **>=3.5** . It can be installed with:
+The package requires Python version **>=3.6** . It can be installed with:
 
 ```bash
 pip install eo-learn
@@ -86,7 +86,7 @@ pip install eo-learn-visualization[FULL]
 
 ### Conda Forge distribution
 
-The package requires a Python environment **>=3.5**. 
+The package requires a Python environment **>=3.6**. 
 
 Thanks to the maintainers of the conda forge feedstock (@benhuff, @dcunn, @mwilson8, @oblute, @rluria14), `eo-learn` can 
 be installed using `conda-forge` as follows:
@@ -94,6 +94,12 @@ be installed using `conda-forge` as follows:
 ```bash
 conda config --add channels conda-forge
 
+conda install eo-learn
+```
+
+In order to avoid heavy package dependencies it is possible to install each subpackage separately:
+
+```bash
 conda install eo-learn-core
 conda install eo-learn-coregistration
 conda install eo-learn-features
