@@ -133,11 +133,11 @@ class SentinelHubInputTask(SentinelHubInputBase):
     """
 
     PREDEFINED_BAND_TYPES = {
-        ProcApiType("mask", 'DN', 'UINT8', np.bool, FeatureType.MASK): [
-            "dataMask"
+        ProcApiType("mask", 'DN', 'UINT8', np.uint8, FeatureType.MASK): [
+            "dataMask", "CLM"
         ],
         ProcApiType("uint8_data", 'DN', 'UINT8', np.uint8, FeatureType.DATA): [
-            "SCL", "SNW", "CLD"
+            "SCL", "SNW", "CLD", "CLP"
         ],
         ProcApiType("bands", 'DN', 'UINT16', np.uint16, FeatureType.DATA): [
             "B01", "B02", "B03", "B04", "B05", "B06", "B07", "B08", "B8A", "B09", "B10", "B11", "B12", "B13"
@@ -300,7 +300,7 @@ class SentinelHubInputTask(SentinelHubInputBase):
             return [time_interval[0]]
 
         wfs = WebFeatureService(
-            bbox=bbox, time_interval=time_interval, data_source=self.data_source, maxcc=self.maxcc
+            bbox=bbox, time_interval=time_interval, data_source=self.data_source, maxcc=self.maxcc, config=self.config
         )
 
         dates = wfs.get_dates()
